@@ -1,5 +1,6 @@
 import fastapi
-from app.schemas.schemas import File as SchemasFile, AuthRequest
+from app.schemas.schemas import File as SchemasFile, AuthRequest, ResponseSchema
+from exceptions import ValidationError
 from parsers.parsers import ServiceFiles
 from s3.s3 import s3_client
 
@@ -13,11 +14,12 @@ async def main_page(request: fastapi.Request, path: str = "") -> list[SchemasFil
 
 
 @router.post("/")
-async def upload_file(file: fastapi.UploadFile, path: str = "") -> AuthRequest:
+async def upload_file(request: fastapi.Request, file: fastapi.UploadFile, path: str = "") -> ResponseSchema:
     try:
-        await s3_client.upload_file(file.file, path)
+        await s3_client.upload_file(file.file, path=path, filename=file.filename, user_bucket=request.state.bucket)
+    except ValidationError as e:
+        return ResponseSchema(success=False, detail=str(e))
     except Exception as e:
-        print(e)
-        return AuthRequest(success=False)
+        return ResponseSchema(success=False, detail='Server error')
     else:
-        return AuthRequest(success=True)
+        return ResponseSchema(success=True)

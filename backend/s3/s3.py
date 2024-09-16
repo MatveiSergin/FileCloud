@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 from tempfile import SpooledTemporaryFile
 
+import fastapi
 from aiobotocore.session import get_session
 from app.settings.settings import settings
 from exceptions import ArgumentError, ValidationError
 from s3.file import File, AbstractFile
 from s3.validators import PathValidator, Path
-from utils import get_unique_files
+from utils import get_unique_files, has_substring_in_strings
 from validators import BaseValidator
 
 
@@ -42,22 +43,29 @@ class S3Client:
 
     async def upload_file(self,
                           file: SpooledTemporaryFile,
-                          path: str = None,
-                          filename: str = None
+                          user_bucket: str,
+                          filename: str,
+                          path: str,
                           ) -> None:
+
+        self._path_validator(
+            path
+            ).validate()
+
+        absolute_path = f'{user_bucket}{path}{filename}'
         async with self.get_client() as client:
-            if path:
-                await client.put_object(Bucket=self.bucket_name, Key=path, Body=file)
-            elif filename:
-                await client.put_object(Bucket=self.bucket_name, Key=file, Body=file)
-            else:
-                raise ArgumentError('Path or filename is required')
+            print(self.bucket_name, absolute_path, file)
+            await client.put_object(Bucket=self.bucket_name, Key=absolute_path, Body=file)
 
     async def get_folder_contents(self, path: Path, user_bucket: str) -> list[dict]:
-        path = f'{user_bucket}/{path}'
+        path = f'{user_bucket}{path}'
+
+        user_paths = await self._get_user_paths(user_bucket)
+        if not has_substring_in_strings(path, user_paths):
+            return []
+
         try:
-            user_paths = self._get_user_paths(user_bucket)
-            path = self._path_validator(path, user_paths).validate()
+            path = self._path_validator(path).validate()
         except ValidationError as e:
             return []
 
@@ -79,6 +87,7 @@ class S3Client:
                 for content in result.get('Contents', []):
                     paths.append(content['Key'])
             return paths
+
     def _processing_content(self, content: dict, path: Path) -> dict:
         if len(path) != 0:
             postfix = content['Key'][len(path):]

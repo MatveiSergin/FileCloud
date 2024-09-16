@@ -16,3 +16,8 @@ class AuthRequest(BaseModel):
 
 class AuthResponse(BaseModel):
     detail: str
+
+
+class ResponseSchema(BaseModel):
+    success: bool
+    detail: str | None = None

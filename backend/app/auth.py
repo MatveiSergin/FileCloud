@@ -5,6 +5,7 @@ from app.schemas.schemas import AuthRequest, AuthResponse
 class AuthProcess:
     def __init__(self, response: str):
         self.response = response
+        print(type(self.response), 2)
         self.json_response = json.loads(response)
 
     def authenticate(self) -> AuthRequest:
@@ -15,9 +16,9 @@ class AuthProcess:
         user_id = self.json_response.get('user_id', None)
 
         if not is_auth:
-            return self.process_error(self, 'Permission denied')
+            return self.process_error(detail='Permission denied')
 
         return AuthRequest(success=is_auth, user_id=user_id)
 
-    def process_error(self, detail: str):
+    def process_error(self, detail: str) -> AuthRequest:
         return AuthRequest(success=False, user_id=None, detail=detail)

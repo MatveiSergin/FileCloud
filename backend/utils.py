@@ -12,6 +12,8 @@ def get_unique_files(folder: list[dict[str:str]]) -> list[dict]:
 
     return unique_folder
 
-def get_path_without_domain(path: str, domain: str = settings.DOMAIN) -> str: #ftp://ru.com/files
-    end_domain_ind = path.index(domain) + len(domain)
-    return path[end_domain_ind:]
+def has_substring_in_strings(sub_string: str, strings: list):
+    for string in strings:
+        if sub_string in string:
+            return True
+    return False
